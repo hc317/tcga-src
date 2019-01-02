@@ -1,0 +1,44 @@
+1.
+起始位置是 src/ 文件夹，运行一个集合版本的 shell 脚本：set.sh ，这意味着在上一层的目录中，包括基础的 dataset、src 、（及其他工具包文件夹）保持不变外，没有其余文件夹，所以上一层的目录可以定名为 TCGA-IC50 之类。
+
+2.
+脚本首先在 ../ 目录下创建以某种癌症的分型为名的文件夹 TCGA-XXXX （这一步包括以下所有步都包含在用户输入的癌症分型的循环下面，所以无所谓什么癌症了），要大写，得到 TCGA-XXXX/
+
+3.
+cd 到这个目录，运行 python ../src/gdc_scan.py MAF，gzip -d 解压 mutect.maf 文件并重命名，然后删除其他下载下来的压缩包，mutect.maf 的压缩包不用删，解压后就消失了。（从一开始就要求在有网络的环境进行），得到 mutect.maf
+
+4.
+对于得到的 mutect.maf 文件，需要做一些处理，删除前5行，sed -i '1,5d' mutect.maf ，以及删除chr字符串， vim mutect.maf -> :%s/chr//g -> Enter -> :wq，得到 mutect.maf。
+
+5.
+在 TCGA-XXXX 下创建 xxxx-all-clinical-files 文件夹，cd 到这个文件夹，运行 python ../../src/gdc_scan.py Clinical Supplement ， 得到 xxxx-all-clinical-files/*.xml + *.txt
+
+6.
+集合脚本让 pwd 回到 src/ ，运行 python3 get_id.py type1 type2 type3 ... （type的输入格式为TCGA-XXXX）, 得到 xxxx-id.csv（它和mutect.maf都在上一层目录里，不属于该层的任何文件夹）
+
+7.
+继续运行 python3 extract.py type1 type2 type3 ...，得到 xxxx-maf/*(ID).maf
+
+8.
+运行 ./2vcf.sh , 注意 maf2vcf.pl 中 fasta 文件的路径（第12行）, 结束后删除该目录下的 *.pairs.tsv 文件， 得到 TCGA-XXXX/xxxx-vcf/ *.vcf
+
+9.
+cd 回src/ ，创建文件夹 ../TCGA-XXXX/xxxx-vep-vcf ，运行 ./vep.sh ，注意ensembl-vep位置以及 cache 位置以及 fork 核数，得到 TCGA-XXXX/xxxx-vep-vcf/*.vcf
+
+10.
+cd 回src/ ，运行python3 cut.py type1 type2 type3 ...，得到 TCGA-XXXX/xxxx-cut/*.vcf
+
+11.
+创建文件夹 ../TCGA-XXXX/xxxx-filter， 运行 ./filter.sh，注意 ensembl-vep位置，得到 xxxx-filter/*.vcf
+
+12.
+cd 回 src/，创建文件夹 ../TCGA-XXXX/xxxx-fasta，运行 ./fasta.sh，得到 xxxx-fasta/*.vcf.fa
+
+13.
+cd 回 src/，创建文件夹 ../TCGA-XXXX/xxxx-pep，运行 ./pep.sh，得到 xxxx-pep/*.vcf.fa.pep
+
+14.
+cd 回 src/，运行 pre.sh，注意mhcnuggets/src/predict.py的位置，得到 xxxx-pre/*(ID).vcf.fa.pep/[ABC]/*(hla).csv
+
+15.
+运行 python3 ic50.py type1 type2 type3 ..，得到 lusc-qualified/*(ID).vcf.fa.pep/[ABC]/qualified-*(hla).csv，结束。
